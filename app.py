@@ -174,10 +174,10 @@ def _health_colour(score: float) -> str:
     return "#f85149"
 
 
-def _risk_colour(risk: float) -> str:
+def _risk_colour(risk: float, threshold: float = RISK_THRESHOLD) -> str:
     if risk < 0.40:
         return "#3fb950"
-    if risk < RISK_THRESHOLD:
+    if risk < threshold:
         return "#e3b341"
     return "#f85149"
 
@@ -224,7 +224,7 @@ def build_gauge(health_score: float) -> go.Figure:
     return fig
 
 
-def build_probability_trend(df: pd.DataFrame) -> go.Figure:
+def build_probability_trend(df: pd.DataFrame, threshold: float = RISK_THRESHOLD) -> go.Figure:
     fig = go.Figure()
     if "failure_probability" not in df.columns or df.empty:
         return _apply_chart_layout(fig)
@@ -238,10 +238,10 @@ def build_probability_trend(df: pd.DataFrame) -> go.Figure:
         fillcolor="rgba(248,81,73,0.08)",
     ))
     fig.add_hline(
-        y=RISK_THRESHOLD,
+        y=threshold,
         line_dash="dash",
         line_color="#e3b341",
-        annotation_text=f"threshold={RISK_THRESHOLD}",
+        annotation_text=f"threshold={threshold}",
         annotation_font_color="#e3b341",
         annotation_font_size=10,
     )
@@ -324,6 +324,7 @@ def run_simulation(
     n_steps: int,
     drift_multiplier: float,
     seed: int,
+    risk_threshold: float = RISK_THRESHOLD,
 ) -> tuple:
     """
     Execute a full simulation run and return processed analytics data.
@@ -339,7 +340,7 @@ def run_simulation(
     simulator = InfrastructureSimulator(seed=seed, drift_multiplier=drift_multiplier)
     detector = AnomalyDetector()
     predictor = FailurePredictor()
-    recovery_engine = RecoveryEngine(simulator)
+    recovery_engine = RecoveryEngine(simulator, risk_threshold=risk_threshold)
 
     warm_up = max(ROLLING_WINDOW * 2, 30)
     snapshots = []
@@ -430,14 +431,13 @@ with st.sidebar:
     seed = st.number_input(
         "Random Seed", min_value=0, max_value=9999, value=42, step=1
     )
-    risk_threshold_display = st.slider(
+    risk_threshold_val = st.slider(
         "Risk Threshold",
         min_value=0.10,
         max_value=0.95,
         value=RISK_THRESHOLD,
         step=0.05,
         help="Failure probability above which recovery is triggered.",
-        disabled=True,
     )
 
     st.divider()
@@ -466,7 +466,7 @@ if "analytics_df" not in st.session_state:
 
 if run_btn:
     with st.spinner("Running simulation..."):
-        df, log = run_simulation(n_steps, drift, int(seed))
+        df, log = run_simulation(n_steps, drift, int(seed), risk_threshold_val)
     st.session_state.analytics_df = df
     st.session_state.recovery_log = log
 
@@ -527,8 +527,8 @@ with col3:
         kpi_card(
             "Failure Risk",
             f"{failure_prob:.2f}",
-            f"threshold: {RISK_THRESHOLD}",
-            _risk_colour(failure_prob),
+            f"threshold: {risk_threshold_val}",
+            _risk_colour(failure_prob, risk_threshold_val),
         ),
         unsafe_allow_html=True,
     )
@@ -557,7 +557,7 @@ with col_gauge:
 
 with col_trend:
     st.plotly_chart(
-        build_probability_trend(analytics_df),
+        build_probability_trend(analytics_df, risk_threshold_val),
         use_container_width=True,
         config={"displayModeBar": False},
     )

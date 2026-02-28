@@ -203,7 +203,7 @@ class InfrastructureSimulator:
             hard_lo, hard_hi = self._hard_bounds(metric)
             self._state[metric] = float(np.clip(new_value, hard_lo, hard_hi))
 
-    def _hard_bounds(self, metric: str) -> tuple:
+    def _hard_bounds(self, metric: str) -> tuple[float, float]:
         """
         Absolute clamp bounds – slightly wider than normal operating range
         to allow transient exceedances before recovery kicks in.

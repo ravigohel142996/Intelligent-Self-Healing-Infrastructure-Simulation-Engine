@@ -193,6 +193,13 @@ class FailurePredictor:
             proba: float = float(self._model.predict_proba(row_scaled)[0][1])
             return round(proba, 4)
 
+        import warnings
+        warnings.warn(
+            f"Feature dimension mismatch: expected {len(self._feature_cols or [])}, "
+            f"got {row.shape[1]}.  Returning 0.0.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
         return 0.0
 
     @property
