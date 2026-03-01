@@ -206,3 +206,18 @@ class FailurePredictor:
     def is_fitted(self) -> bool:
         """True if the predictor has been trained."""
         return self._is_fitted
+
+    @property
+    def feature_importances(self) -> tuple[List[str], List[float]]:
+        """
+        Return (feature_names, importances) from the trained Random Forest.
+
+        Returns
+        -------
+        tuple
+            A pair (names, values) where both lists are aligned.  Empty lists
+            are returned when the model has not yet been fitted.
+        """
+        if not self._is_fitted or self._model is None or self._feature_cols is None:
+            return [], []
+        return list(self._feature_cols), self._model.feature_importances_.tolist()
